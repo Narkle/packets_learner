@@ -1,13 +1,6 @@
-import threading
-from scapy.all import *
-import os
-import sys
-import pandas as pd
-import csv
-import time
-from tqdm import tqdm
 import click
-import numpy as np
+from tqdm import tqdm
+from scapy.all import *
 
 header = [
     "time",
@@ -261,6 +254,7 @@ def process_packet(packet):
         return ",".join([str(i) for i in res]) + "\n"
     except:
         return None
+
 
 @click.command()
 @click.argument("in_pcap", type=click.Path(exists=True))

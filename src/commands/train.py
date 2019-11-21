@@ -1,17 +1,23 @@
+import logging as LOGGER
+from functools import partial
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import click
-from functools import partial
-import logging as LOGGER
+
 from src.data.data import (
     create_directory,
     split_data,
     preprocess_netflow_data,
     preprocess_pcap_data,
 )
-
-from src.models import RandomForestModel, XGBoostModel, LogisticRegressionModel, RNNModel
+from src.models import (
+    RandomForestModel,
+    XGBoostModel,
+    LogisticRegressionModel,
+    RNNModel,
+)
 
 LOGGER.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=LOGGER.INFO)
 click.option = partial(click.option, show_default=True)
@@ -55,27 +61,33 @@ def train_models(
     output_directory = create_directory(output_directory)
     np.random.seed(random_seed)
     LOGGER.info(f"Reading {data_file} ...")
-    if data_file.endswith('parquet'):
-        data = pd.read_parquet(data_file).dropna(how='all')
-    elif data_file.endswith('csv'):
-        data = pd.read_csv(data_file).dropna(how='all')
+    if data_file.endswith("parquet"):
+        data = pd.read_parquet(data_file).dropna(how="all")
+    elif data_file.endswith("csv"):
+        data = pd.read_csv(data_file).dropna(how="all")
     else:
-        raise NotImplementedError(f'Extension of {datafile} is not supported')
-        
+        raise NotImplementedError(f"Extension of {data_file} is not supported")
+
     if packet_type == "netflow":
         data = preprocess_netflow_data(data, label_column, transition)
     else:
         data = preprocess_pcap_data(data, label_column)
-    
+
     LOGGER.info(f"Read {len(data)} records")
     LOGGER.info(f"Preparing training and testing data ...")
-    
+
     if predict != 0:
         x, y = data.iloc[:-predict, :-1], data.iloc[predict:, -1]
     else:
         x, y = data.iloc[:, :-1], data.iloc[:, -1]
-    
-    x_tr, x_te, y_tr, y_te = split_data(x.values, y.values, test_set_size, random_seed, True if transition == 2 else False)
+
+    x_tr, x_te, y_tr, y_te = split_data(
+        x.values,
+        y.values,
+        test_set_size,
+        random_seed,
+        True if transition == 2 else False,
+    )
     mapper = {
         "random_forest": RandomForestModel,
         "xgboost": XGBoostModel,
@@ -98,9 +110,11 @@ def train_models(
 
         cur_scenario = f"{packet_type}_{model_name}_{'fast' if fast else 'no-fast'}_{predict}steps_{'transition' if transition else 'binary'}"
         cur_output_dir = create_directory(output_directory / cur_scenario)
-        
+
         LOGGER.info(f"Evaluating {model_name} on the test set ...")
-        model.evaluate(x_te, y_te, cur_output_dir, data.columns[:-1], transition=transition)
+        model.evaluate(
+            x_te, y_te, cur_output_dir, data.columns[:-1], transition=transition
+        )
 
         if save:
             LOGGER.info(f"Saving {model_name} to pickle file ...")

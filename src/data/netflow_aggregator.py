@@ -1,12 +1,12 @@
-import pandas as pd
-import numpy as np
+import logging as LOGGER
+from pathlib import Path
 import os
+
+from joblib import Parallel, delayed
+import pandas as pd
 from tqdm import tqdm
 import click
 from scipy.stats import entropy
-from pathlib import Path
-from joblib import Parallel, delayed
-import logging as LOGGER
 
 LOGGER.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=LOGGER.INFO)
 
@@ -23,7 +23,6 @@ NETFLOW_IRS_FILES = [
     os.path.join(NETFLOW_DIR, "capture201108%s.binetflow" % i)
     for i in ["10", "11", "12", "15", "17", "18", "18-2"]
 ]
-
 
 
 @click.command()
@@ -94,7 +93,9 @@ def _classify_ip(value):
 def _aggregate_netflow(netflow, window_size, n_jobs):
     LOGGER.info("Cleaning data ...")
     netflow.Label = netflow.Label.str.lower()
-    netflow = netflow[netflow.Label.str.contains('botnet') | ~netflow.Label.str.contains('background')]
+    netflow = netflow[
+        netflow.Label.str.contains("botnet") | ~netflow.Label.str.contains("background")
+    ]
     netflow["StartTime"] = (
         netflow.StartTime - netflow.StartTime.min()
     ).dt.total_seconds()
@@ -125,21 +126,24 @@ def _aggregate_netflow(netflow, window_size, n_jobs):
     features_calculated = []
     in_parallel = 40
     results_ids = []
-    features_calculated = Parallel(n_jobs=n_jobs)(delayed(_aggregate_window)(netflow[
-                    (netflow.StartWindow <= window) & (netflow.EndWindow >= window)
-                ],
-                window,
-                window_size,) for window in tqdm(range(firstWindow, lastWindow + 1), unit="window"))
-#     for window in tqdm(range(firstWindow, lastWindow + 1), unit="window"):
-#         features_calculated.append(
-#             _aggregate_window(
-#                 netflow[
-#                     (netflow.StartWindow <= window) & (netflow.EndWindow >= window)
-#                 ],
-#                 window,
-#                 window_size,
-#             )
-#         )
+    features_calculated = Parallel(n_jobs=n_jobs)(
+        delayed(_aggregate_window)(
+            netflow[(netflow.StartWindow <= window) & (netflow.EndWindow >= window)],
+            window,
+            window_size,
+        )
+        for window in tqdm(range(firstWindow, lastWindow + 1), unit="window")
+    )
+    #     for window in tqdm(range(firstWindow, lastWindow + 1), unit="window"):
+    #         features_calculated.append(
+    #             _aggregate_window(
+    #                 netflow[
+    #                     (netflow.StartWindow <= window) & (netflow.EndWindow >= window)
+    #                 ],
+    #                 window,
+    #                 window_size,
+    #             )
+    #         )
     return pd.DataFrame(features_calculated)
 
 

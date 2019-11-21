@@ -1,13 +1,14 @@
-import click
-from .train import train_models
 import logging as LOGGER
+
+import click
+
+from .train import train_models
 
 LOGGER.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=LOGGER.INFO)
 
+
 @click.command()
 @click.pass_context
-
-
 @click.argument("data_file", type=click.Path(exists=True))
 @click.argument("label_column")
 @click.argument("output_directory")
@@ -41,19 +42,19 @@ def train_multiple(
     transition,
     save,
 ):
-        for f in range(predict[0], predict[1]+1, predict[2]):
-            LOGGER.info(f"Invoking train_models with forward_predict={f}")
-            ctx.invoke(
-                train_models,
-                data_file=data_file,
-                label_column=label_column,
-                output_directory=output_directory,
-                packet_type=packet_type,
-                test_set_size=test_set_size,
-                random_seed=random_seed,
-                model_list=model_list,
-                fast=fast,
-                predict=f,
-                transition=transition,
-                save=save,
-            )
+    for f in range(predict[0], predict[1] + 1, predict[2]):
+        LOGGER.info(f"Invoking train_models with forward_predict={f}")
+        ctx.invoke(
+            train_models,
+            data_file=data_file,
+            label_column=label_column,
+            output_directory=output_directory,
+            packet_type=packet_type,
+            test_set_size=test_set_size,
+            random_seed=random_seed,
+            model_list=model_list,
+            fast=fast,
+            predict=f,
+            transition=transition,
+            save=save,
+        )

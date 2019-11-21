@@ -1,16 +1,16 @@
+import os
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
-import os
 import click
-from pathlib import Path
 from tqdm import tqdm
 from joblib import Parallel, delayed
 from scipy.stats import entropy
 
 PCAP_DIR = "/data/saed/network/data/pcap_files_csv/"
 PCAP_SPAM_FILES = [
-    os.path.join(PCAP_DIR, "capture201108%s.parquet" % i)
-    for i in ["11"]
+    os.path.join(PCAP_DIR, "capture201108%s.parquet" % i) for i in ["11"]
 ]
 PCAP_DDOS_FILES = [
     os.path.join(PCAP_DIR, "capture201108%s.parquet" % i) for i in ["15", "18", "18-2"]
@@ -19,10 +19,7 @@ PCAP_IRS_FILES = [
     os.path.join(PCAP_DIR, "capture201108%s.parquet" % i)
     for i in ["15", "17", "18", "18-2"]
 ]
-PCAP_12_FILES = [
-    os.path.join(PCAP_DIR, "capture201108%s.parquet" % i)
-    for i in ["12"]
-]
+PCAP_12_FILES = [os.path.join(PCAP_DIR, "capture201108%s.parquet" % i) for i in ["12"]]
 MALICIOUS = set(
     [
         "147.32.84.165",  # 15
@@ -93,7 +90,12 @@ def write_pcap_agg_scenario(scenario, window_size, output_file, n_jobs):
 
 
 def generate_pcap_agg_scenario(scenario, window_size, n_jobs):
-    mapper = {"spam": PCAP_SPAM_FILES, "ddos": PCAP_DDOS_FILES, "irc": PCAP_IRS_FILES, "12" : PCAP_12_FILES}
+    mapper = {
+        "spam": PCAP_SPAM_FILES,
+        "ddos": PCAP_DDOS_FILES,
+        "irc": PCAP_IRS_FILES,
+        "12": PCAP_12_FILES,
+    }
     if scenario not in mapper:
         raise ValueError(f"Unknown type '{scenario}'.")
 
@@ -101,7 +103,7 @@ def generate_pcap_agg_scenario(scenario, window_size, n_jobs):
     for i in mapper[scenario]:
         res = _aggregate_pcap(pd.read_parquet(i), window_size, n_jobs)
         res.to_parquet(f"{i}_{window_size}s.parquet")
-    return 
+    return
     features_df = pd.concat(features_df)
     return features_df
 
@@ -112,12 +114,15 @@ def _aggregate_pcap(packets, window_size, n_jobs):
     packets["start_window"] = packets.time // window_size
     first_window = int(packets["start_window"].min())
     last_window = int(packets["start_window"].max())
-    results = Parallel(n_jobs=n_jobs)(delayed(_aggregate_pcap_packets)(packets[packets["start_window"] == window]) for window in tqdm(range(first_window, last_window + 1), unit="window"))
-    
-#     results = []
-#     for window in tqdm(range(first_window, last_window + 1)):
-#         window_df = packets[packets["start_window"] == window]
-#         results.append(_aggregate_pcap_packets(window_df))
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_aggregate_pcap_packets)(packets[packets["start_window"] == window])
+        for window in tqdm(range(first_window, last_window + 1), unit="window")
+    )
+
+    #     results = []
+    #     for window in tqdm(range(first_window, last_window + 1)):
+    #         window_df = packets[packets["start_window"] == window]
+    #         results.append(_aggregate_pcap_packets(window_df))
 
     return pd.DataFrame(results)
 
@@ -126,8 +131,12 @@ def _aggregate_pcap_packets(packets):
     fs = {}
     packets = packets[packets["ip.src"].isin(MALICIOUS.union(NORMAL))]
     fs["n_packets"] = len(packets)
-    fs["n_abnormal"] = len([0 for i in packets.itertuples(index=False) if i[14] in MALICIOUS])
-    fs["n_normal"] = len([0 for i in packets.itertuples(index=False) if i[14] in NORMAL])
+    fs["n_abnormal"] = len(
+        [0 for i in packets.itertuples(index=False) if i[14] in MALICIOUS]
+    )
+    fs["n_normal"] = len(
+        [0 for i in packets.itertuples(index=False) if i[14] in NORMAL]
+    )
     fs["n_background"] = fs["n_packets"] - fs["n_abnormal"] - fs["n_normal"]
 
     ip_src = [[], [], [], []]
@@ -159,12 +168,12 @@ def _aggregate_pcap_packets(packets):
     port_src = [[], []]
     for i in packets.itertuples(index=False):
         prot = i[12]
-        if prot == 'udp':
+        if prot == "udp":
             try:
                 src_port = int(i[17])
             except:
                 continue
-        elif prot == 'tcp':
+        elif prot == "tcp":
             try:
                 src_port = int(i[21])
             except:
@@ -177,12 +186,12 @@ def _aggregate_pcap_packets(packets):
     port_dst = [[], []]
     for i in packets.itertuples(index=False):
         prot = i[12]
-        if prot == 'udp':
+        if prot == "udp":
             try:
                 dst_port = int(i[18])
             except:
                 continue
-        elif prot == 'tcp':
+        elif prot == "tcp":
             try:
                 dst_port = int(i[22])
             except:
@@ -193,7 +202,7 @@ def _aggregate_pcap_packets(packets):
             port_dst[0].append(dst_port)
         else:
             port_dst[1].append(dst_port)
-            
+
     fs["n_dst_port<1024"] = len(port_dst[1])
 
     src_ips = pd.Series(np.array([j for i in ip_src for j in i]))
